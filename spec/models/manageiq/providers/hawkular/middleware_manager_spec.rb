@@ -187,4 +187,104 @@ describe ManageIQ::Providers::Hawkular::MiddlewareManager do
       end
     end
   end
+
+  describe "server group ops" do
+    let(:ems) { FactoryGirl.build(:ems_hawkular) }
+    it "create_jdr_report" do
+      expect(ems).to receive(:run_generic_operation).with(:JDR, "ref")
+      ems.create_jdr_report("ref")
+    end
+
+    it "resume_middleware_server_group" do
+      expect(ems).to receive(:run_generic_operation).with('Resume Servers', "ref")
+      ems.resume_middleware_server_group("ref")
+    end
+
+    it "suspend_middleware_server_group" do
+      expect(ems).to receive(:run_generic_operation).with('Suspend Servers', "ref", :timeout => 0)
+      ems.suspend_middleware_server_group("ref", {})
+      expect(ems).to receive(:run_generic_operation).with('Suspend Servers', "ref", :timeout => 10)
+      ems.suspend_middleware_server_group("ref", :timeout => 10)
+    end
+
+    it "reload_middleware_server_group" do
+      expect(ems).to receive(:run_generic_operation).with('Reload Servers', "ref")
+      ems.reload_middleware_server_group("ref")
+    end
+
+    it "restart_middleware_server_group" do
+      expect(ems).to receive(:run_generic_operation).with('Restart Servers', "ref")
+      ems.restart_middleware_server_group("ref")
+    end
+
+    it "stop_middleware_server_group" do
+      expect(ems).to receive(:run_generic_operation).with('Stop Servers', "ref", :timeout => 0)
+      ems.stop_middleware_server_group("ref", {})
+      expect(ems).to receive(:run_generic_operation).with('Stop Servers', "ref", :timeout => 10)
+      ems.stop_middleware_server_group("ref", :timeout => 10)
+    end
+
+    it "start_middleware_server_group" do
+      expect(ems).to receive(:run_generic_operation).with('Start Servers', "ref")
+      ems.start_middleware_server_group("ref")
+    end
+  end
+
+  describe 'validation' do
+    let(:ems) { FactoryGirl.build(:ems_hawkular) }
+    it "handles unknown error" do
+      allow(ManageIQ::Providers::Hawkular::MiddlewareManager).to receive(:raw_connect).and_raise(StandardError)
+      expect { ems.verify_credentials }.to raise_error(MiqException::Error, /Unable to verify credentials/)
+    end
+
+    it "handles invalid host" do
+      allow(ManageIQ::Providers::Hawkular::MiddlewareManager).to receive(:raw_connect).and_raise(URI::InvalidComponentError)
+      expect { ems.verify_credentials }.to raise_error(MiqException::MiqHostError, /Host */)
+    end
+
+    it "handles connection error" do
+      allow(ManageIQ::Providers::Hawkular::MiddlewareManager).to receive(:raw_connect).and_raise(
+        ::Hawkular::ConnectionException.new(nil, nil)
+      )
+      expect { ems.verify_credentials }.to raise_error(MiqException::MiqUnreachableError, /Unable to connect to*/)
+    end
+
+    it "handles invalid credentials" do
+      allow(ManageIQ::Providers::Hawkular::MiddlewareManager).to receive(:raw_connect).and_raise(
+        ::Hawkular::Exception.new("", 401)
+      )
+      expect { ems.verify_credentials }.to raise_error(MiqException::MiqInvalidCredentialsError, /Invalid credentials/)
+    end
+  end
+
+  describe "methods manager" do
+    let(:ems) { FactoryGirl.build(:ems_hawkular) }
+    it "validate_authentication_status" do
+      expect(ems.validate_authentication_status).to eq(:available => true, :message => nil)
+    end
+
+    it "verify_ssl_mode" do
+      expect(described_class.verify_ssl_mode("ssl-without-validation")).to eq(OpenSSL::SSL::VERIFY_NONE)
+      expect(described_class.verify_ssl_mode("other")).to eq(OpenSSL::SSL::VERIFY_PEER)
+    end
+
+    it "supports_port?" do
+      expect(ems.supports_port?).to be_truthy
+    end
+
+    it "entrypoint" do
+      expect(described_class.entrypoint("0.0.0.0", "9000", "non-ssl")).to eq(
+        URI::HTTP.build(:host => "0.0.0.0", :port => "9000".to_i).to_s
+      )
+      expect(described_class.entrypoint("0.0.0.0", "9000", "")).to eq(
+        URI::HTTP.build(:host => "0.0.0.0", :port => "9000".to_i).to_s
+      )
+      expect(described_class.entrypoint("0.0.0.0", "9000", nil)).to eq(
+        URI::HTTP.build(:host => "0.0.0.0", :port => "9000".to_i).to_s
+      )
+      expect(described_class.entrypoint("0.0.0.0", "9000", "other")).to eq(
+        URI::HTTPS.build(:host => "0.0.0.0", :port => "9000".to_i).to_s
+      )
+    end
+  end
 end

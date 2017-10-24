@@ -80,4 +80,58 @@ describe ManageIQ::Providers::Hawkular::MiddlewareManager::EventCatcher::Runner 
       expect(hash[:full_data]).to be_an String
     end
   end
+
+  context "event_monitor" do
+    it "reset_event_monitor_handle" do
+      expect(subject.instance_variable_get('@event_monitor_handle')).to be_nil
+      subject.send(:reset_event_monitor_handle)
+    end
+
+    it "stop_event_monitor" do
+      expect(subject).to receive(:reset_event_monitor_handle)
+      expect(subject.instance_variable_get('@event_monitor_handle')).to be_nil
+      subject.send(:stop_event_monitor)
+    end
+
+    context "event_monitor_handle" do
+      it "event_monitor_handle not defined" do
+        VCR.use_cassette(described_class.name.underscore.to_s,
+                         :decode_compressed_response => true) do # , :record => :new_episodes) do
+          subject.instance_variable_set('@event_monitor_handle', nil)
+          subject.send(:event_monitor_handle)
+          expect(subject.instance_variable_get('@event_monitor_handle')).to be_an ManageIQ::Providers::Hawkular::MiddlewareManager::EventCatcher::Stream
+        end
+      end
+    end
+  end
+
+  it 'process_event' do
+    subject.instance_variable_set('@filtered_events', ['hawkular_event.critical', 'hawkular_datasource.ok'])
+    expect(subject.send(:blacklist?, "")).to be_falsey
+    expect(subject.send(:blacklist?, "hawkular_event.critical")).to be_truthy
+  end
+
+  it 'process_event' do
+    event = ::Hawkular::Alerts::Event.new({})
+    event.ctime = Time.now.to_i
+    event.text    = 'text message'
+    event.context = {'resource_path' => 'canonical_path', 'message' => 'context message'}
+    event.tags    = {'miq.event_type' => 'hawkular_event.critical', 'miq.resource_type' => 'MiddlewareServer'}
+    event_hash = subject.send(:event_to_hash, event, 1)
+    subject.instance_variable_set('@cfg', :ems_id => 1)
+    subject.instance_variable_set('@filtered_events', ['hawkular_datasource.ok'])
+    expect(EmsEvent).to receive(:add_queue).with('add', 1, event_hash)
+    subject.send(:process_event, event)
+  end
+
+  it 'monitor_events' do
+    VCR.use_cassette(described_class.name.underscore.to_s,
+                     :decode_compressed_response => true) do # , :record => :new_episodes) do
+      subject.send(:event_monitor_handle)
+      monitor_handle = subject.instance_variable_get('@event_monitor_handle')
+      expect(monitor_handle).to receive(:start)
+      expect(subject).to receive(:reset_event_monitor_handle)
+      subject.send(:monitor_events)
+    end
+  end
 end
