@@ -201,6 +201,7 @@ module ManageIQ::Providers
         :id                  => alert_profile_arg[:profile_id],
         :old_alerts_ids      => alert_profile_arg[:old_alerts],
         :new_alerts_ids      => alert_profile_arg[:new_alerts],
+        :resource_type       => alert_profile_arg[:new_assignments]["assign_to"],
         :old_assignments_ids => process_old_assignments_ids(alert_profile_arg[:old_assignments]),
         :new_assignments_ids => process_new_assignments_ids(alert_profile_arg[:new_assignments])
       }

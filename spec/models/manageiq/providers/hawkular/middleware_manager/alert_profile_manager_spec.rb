@@ -48,10 +48,11 @@ describe ManageIQ::Providers::Hawkular::MiddlewareManager::AlertProfileManager d
 
       # Assume it was already assigned to Serv2, and now it's added to Serv.
       allow(client).to receive(:list_members).with(group_trigger.id).and_return([server2_member_trigger])
-      expect(subject).to receive(:create_new_member).with(group_trigger, server.id)
+      expect(subject).to receive(:create_new_member).with('middleware_server', group_trigger, server.id)
 
       subject.process_alert_profile(:update_assignments,
                                     :id => 50, :old_alerts_ids => [alert_id],
+                                    :resource_type => 'middleware_server',
                                     :old_assignments_ids => [server2.id],
                                     :new_assignments_ids => [server.id, server2.id])
     end
@@ -69,7 +70,7 @@ describe ManageIQ::Providers::Hawkular::MiddlewareManager::AlertProfileManager d
       )
     )
 
-    subject.create_new_member(group_trigger, server.id)
+    subject.create_new_member('middleware_server', group_trigger, server.id)
   end
 
   it 'calculate_member_data_id_map' do

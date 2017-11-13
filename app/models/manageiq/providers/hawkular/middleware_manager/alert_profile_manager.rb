@@ -13,15 +13,16 @@ module ManageIQ::Providers
       new_alerts_ids = miq_alert_profile[:new_alerts_ids]
       old_assignments_ids = miq_alert_profile[:old_assignments_ids]
       new_assignments_ids = miq_alert_profile[:new_assignments_ids]
+      resource_type = miq_alert_profile[:resource_type]
       case operation
       when :update_alerts
-        update_alerts(profile_id, old_alerts_ids, new_alerts_ids, old_assignments_ids)
+        update_alerts(resource_type, profile_id, old_alerts_ids, new_alerts_ids, old_assignments_ids)
       when :update_assignments
-        update_assignments(profile_id, old_alerts_ids, old_assignments_ids, new_assignments_ids)
+        update_assignments(resource_type, profile_id, old_alerts_ids, old_assignments_ids, new_assignments_ids)
       end
     end
 
-    def update_alerts(profile_id, old_alerts_ids, new_alerts_ids, old_assignments_ids)
+    def update_alerts(resource_type, profile_id, old_alerts_ids, new_alerts_ids, old_assignments_ids)
       unless old_assignments_ids.empty?
         to_remove_alerts_ids = old_alerts_ids - new_alerts_ids
         to_add_alerts_ids = new_alerts_ids - old_alerts_ids
@@ -29,18 +30,18 @@ module ManageIQ::Providers
           unassign_members(group_trigger, profile_id, old_assignments_ids)
         end
         retrieve_hawkular_group_triggers(to_add_alerts_ids).each do |group_trigger|
-          assign_members(group_trigger, profile_id, old_assignments_ids)
+          assign_members(resource_type, group_trigger, profile_id, old_assignments_ids)
         end
       end
     end
 
-    def update_assignments(profile_id, old_alerts_ids, old_assignments_ids, new_assignments_ids)
+    def update_assignments(resource_type, profile_id, old_alerts_ids, old_assignments_ids, new_assignments_ids)
       to_unassign_ids = old_assignments_ids - new_assignments_ids
       to_assign_ids = new_assignments_ids - old_assignments_ids
       if to_unassign_ids.any? || to_assign_ids.any?
         retrieve_hawkular_group_triggers(old_alerts_ids).each do |group_trigger|
           unassign_members(group_trigger, profile_id, to_unassign_ids) unless to_unassign_ids.empty?
-          assign_members(group_trigger, profile_id, to_assign_ids) unless to_assign_ids.empty?
+          assign_members(resource_type, group_trigger, profile_id, to_assign_ids) unless to_assign_ids.empty?
         end
       end
     end
@@ -65,14 +66,14 @@ module ManageIQ::Providers
       [context, profiles]
     end
 
-    def assign_members(group_trigger, profile_id, members_ids)
+    def assign_members(resource_type, group_trigger, profile_id, members_ids)
       group_trigger.context = assign_members_context(group_trigger, profile_id)
       @alerts_client.update_group_trigger(group_trigger)
       members = @alerts_client.list_members group_trigger.id
       current_members_ids = members.collect(&:id)
       members_ids.each do |member_id|
         next if current_members_ids.include?("#{group_trigger.id}-#{member_id}")
-        create_new_member(group_trigger, member_id)
+        create_new_member(resource_type, group_trigger, member_id)
       end
     end
 
@@ -84,8 +85,8 @@ module ManageIQ::Providers
       context
     end
 
-    def create_new_member(group_trigger, member_id)
-      server = MiddlewareServer.find(member_id)
+    def create_new_member(resource_type, group_trigger, member_id)
+      server     = resource_type.camelize.singularize.constantize.find(member_id)
       new_member = ::Hawkular::Alerts::Trigger::GroupMemberInfo.new
       new_member.group_id = group_trigger.id
       new_member.member_id = "#{group_trigger.id}-#{member_id}"
@@ -101,7 +102,6 @@ module ManageIQ::Providers
 
       group_trigger.conditions.each do |condition|
         id_prefix = "#{prefix}MI~R~[#{server.feed}/#{server.nativeid}]~MT~"
-
         data_id_map[condition.data_id] = "#{id_prefix}#{condition.data_id}"
         unless condition.data2_id.nil?
           data_id_map[condition.data2_id] = "#{id_prefix}#{condition.data2_id}"
