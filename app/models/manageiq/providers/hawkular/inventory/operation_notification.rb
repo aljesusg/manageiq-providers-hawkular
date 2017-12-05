@@ -33,13 +33,15 @@ module ManageIQ
               unless mw_entity
                 EmsEvent.add_queue(
                   'add', manager.id,
-                  :ems_id          => manager.id,
-                  :source          => 'HAWKULAR',
-                  :timestamp       => Time.zone.now,
-                  :event_type      => args.event_type(mw_server),
-                  :message         => args.event_message(mw_server),
-                  :middleware_ref  => mw_server.ems_ref,
-                  :middleware_type => mw_server.class.name.demodulize
+                  :ems_id                 => manager.id,
+                  :source                 => 'HAWKULAR',
+                  :timestamp              => Time.zone.now,
+                  :event_type             => args.event_type(mw_server),
+                  :message                => args.event_message(mw_server),
+                  :middleware_server_id   => mw_server.id,
+                  :middleware_server_name => mw_server.name,
+                  :middleware_ref         => mw_server.ems_ref,
+                  :middleware_type        => mw_server.class.name.demodulize
                 )
               end
             end

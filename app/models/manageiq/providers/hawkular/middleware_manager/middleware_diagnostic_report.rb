@@ -88,14 +88,16 @@ module ManageIQ::Providers
 
       EmsEvent.add_queue(
         'add', ems_id,
-        :ems_id          => ems_id,
-        :source          => 'EVM',
-        :timestamp       => Time.zone.now,
-        :event_type      => 'hawkular_event',
-        :message         => _('Generation of JDR report was requested by a user.'),
-        :middleware_ref  => middleware_server.ems_ref,
-        :middleware_type => 'MiddlewareServer',
-        :username        => requesting_user
+        :ems_id                 => ems_id,
+        :source                 => 'EVM',
+        :timestamp              => Time.zone.now,
+        :event_type             => 'hawkular_event',
+        :message                => _('Generation of JDR report was requested by a user.'),
+        :middleware_server_id   => middleware_server.id,
+        :middleware_server_name => middleware_server.name,
+        :middleware_ref         => middleware_server.ems_ref,
+        :middleware_type        => 'MiddlewareServer',
+        :username               => requesting_user
       )
 
       $mw_log.info("#{log_prefix} JDR report [#{id}] for server [#{middleware_server.ems_ref}] enqueued with job #{job.id}.")
