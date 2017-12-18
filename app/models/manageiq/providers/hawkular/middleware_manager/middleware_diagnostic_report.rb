@@ -93,6 +93,7 @@ module ManageIQ::Providers
         :timestamp       => Time.zone.now,
         :event_type      => 'hawkular_event',
         :message         => _('Generation of JDR report was requested by a user.'),
+        :host_name       => middleware_server.kind_of?(MiddlewareServer) ? middleware_server.hostname : nil,
         :middleware_ref  => middleware_server.ems_ref,
         :middleware_type => 'MiddlewareServer',
         :username        => requesting_user

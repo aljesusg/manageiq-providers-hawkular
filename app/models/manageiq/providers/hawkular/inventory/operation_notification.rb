@@ -38,6 +38,7 @@ module ManageIQ
                   :timestamp       => Time.zone.now,
                   :event_type      => args.event_type(mw_server),
                   :message         => args.event_message(mw_server),
+                  :host_name       => mw_server.kind_of?(MiddlewareServer) ? mw_server.hostname : nil,
                   :middleware_ref  => mw_server.ems_ref,
                   :middleware_type => mw_server.class.name.demodulize
                 )
