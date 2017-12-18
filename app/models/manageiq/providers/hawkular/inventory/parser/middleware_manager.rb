@@ -194,7 +194,7 @@ module ManageIQ::Providers
           props = server.properties
 
           props['Availability'], props['Calculated Server State'] =
-            process_server_availability(props['Server State'], availability.try(:[], 'data').try(:first))
+            process_server_availability(props['Suspend State'] == 'SUSPENDED' ? 'suspended' : props['Server State'], availability.try(:[], 'data').try(:first))
         end
       end
 
